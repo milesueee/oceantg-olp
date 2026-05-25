@@ -23,7 +23,8 @@ export default async function handler(req, res) {
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // Use service role key for better security on server-side
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/licenses?key=eq.${licenseKey}&select=*`, {
+    const url = `${SUPABASE_URL}/rest/v1/licenses?key=eq.${encodeURIComponent(licenseKey)}&select=*`;
+    const response = await fetch(url, {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -31,15 +32,27 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    
+    // Debug logging for Vercel logs
+    console.log("License check for:", licenseKey);
+    console.log("Supabase returned:", JSON.stringify(data));
 
     if (data && data.length > 0) {
       const license = data[0];
       const expiry = new Date(license.expiry_date);
       const now = new Date();
 
-      if (expiry > now && license.active === true) {
-        return res.status(200).json({ valid: true, expiry: license.expiry_date });
+      if (license.active !== true) {
+        return res.status(200).json({ valid: false, reason: 'License is inactive' });
       }
+
+      if (expiry <= now) {
+        return res.status(200).json({ valid: false, reason: 'License expired', expiry: license.expiry_date });
+      }
+
+      return res.status(200).json({ valid: true, expiry: license.expiry_date });
+    } else {
+      return res.status(200).json({ valid: false, reason: 'License key not found' });
     }
   } catch (e) {
     console.error("Supabase check error:", e);

@@ -1,11 +1,16 @@
-const VERCEL_API_URL = 'YOUR_VERCEL_APP_URL'; // e.g., https://your-project.vercel.app
+const VERCEL_API_URL = 'https://oceantg-olp.vercel.app'; // e.g., https://your-project.vercel.app
 
 // Basic Vercel fetch wrapper for license check
 async function checkLicenseFromVercel(licenseKey) {
     if (!licenseKey) return { valid: false };
 
     try {
-        const response = await fetch(`${VERCEL_API_URL}/api/check-license?licenseKey=${licenseKey}`);
+        const url = `${VERCEL_API_URL}/api/check-license?licenseKey=${encodeURIComponent(licenseKey)}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.error("Vercel returned error status:", response.status);
+            return { valid: false };
+        }
         const status = await response.json();
         return status;
     } catch (e) {
